@@ -1,164 +1,162 @@
-  generator client {
-    provider = "prisma-client-js"
-  }
+generator client {
+  provider = "prisma-client-js"
+}
 
-  datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
-  }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
-  model User {
-    id             String          @id @default(uuid())
-    email          String          @unique
-    password       String
-    name           String
-    createdAt      DateTime        @default(now())
-    role           Role
-    updatedAt      DateTime        @updatedAt
-    username       String          @unique
-    isActive       Boolean         @default(true)
-    studentDetails StudentDetails?
-    staffDetails   StaffDetails?
-    resetPasswordToken      String?         
-    resetPasswordTokenExpiry DateTime?
-  }
+model User {
+  id                       String          @id @default(uuid())
+  email                    String          @unique
+  password                 String
+  name                     String
+  createdAt                DateTime        @default(now())
+  role                     Role
+  updatedAt                DateTime        @updatedAt
+  username                 String          @unique
+  isActive                 Boolean         @default(true)
+  studentDetails           StudentDetails?
+  staffDetails             StaffDetails?
+  resetPasswordToken       String?
+  resetPasswordTokenExpiry DateTime?
+}
 
+model StudentDetails {
+  id                 String                  @id
+  email              String
+  username           String                  @unique
+  name               String
+  fatherName         String?
+  motherName         String?
+  enrollmentNumber   String?                 @unique
+  courseName         String?
+  batchName          String?
+  dateOfBirth        DateTime?
+  gender             String?
+  bloodGroup         String?
+  contactNo          String?
+  address            String?
+  city               String?
+  state              String?
+  pinCode            Int?
+  achievements       Json?
+  results            Json?
+  isActive           Boolean                 @default(true)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  isProfileCompleted Boolean                 @default(false)
+  user               User                    @relation(fields: [id], references: [id])
+  course             Course?                 @relation(fields: [courseName], references: [courseName])
+  batch              Batch?                  @relation(fields: [batchName], references: [batchName])
+  electiveChoices    ElectiveSubjectChoice[]
+}
 
+model StaffDetails {
+  id                 String    @id
+  email              String
+  username           String
+  name               String
+  isBatchCoordinator Boolean   @default(false)
+  batchId            String?
+  dateOfBirth        DateTime?
+  gender             String?
+  subjects           Subject[]
+  contactNumber      String?
+  achievements       Json?
+  address            String?
+  city               String?
+  state              String?
+  pinCode            Int?
+  isActive           Boolean   @default(true)
+  isProfileCompleted Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  user               User      @relation(fields: [id], references: [id])
+  batch              Batch?    @relation(fields: [batchId], references: [batchId])
+}
 
-  model StudentDetails {
-    id                 String                  @id
-    email              String
-    username           String                  @unique
-    name               String
-    fatherName         String?
-    motherName         String?
-    enrollmentNumber   String?                 @unique
-    courseName         String?
-    batchName          String?
-    dateOfBirth        DateTime?
-    gender             String?
-    bloodGroup         String?
-    contactNo          String?
-    address            String?
-    city               String?
-    state              String?
-    pinCode            Int?
-    achievements       String?
-    results            Json?
-    isActive           Boolean                 @default(true)
-    createdAt          DateTime                @default(now())
-    updatedAt          DateTime                @updatedAt
-    isProfileCompleted Boolean                 @default(false)
-    user               User                    @relation(fields: [id], references: [id])
-    course             Course?                 @relation(fields: [courseName], references: [courseName])
-    batch              Batch?                  @relation(fields: [batchName], references: [batchName])
-    electiveChoices    ElectiveSubjectChoice[]
-  }
+model Subject {
+  subjectId             String                  @id @default(uuid())
+  subjectName           String
+  subjectCode           String
+  semester              Int
+  courseId              String
+  isElective            Boolean                 @default(false)
+  course                Course                  @relation(fields: [courseId], references: [courseId])
+  electiveGroup         ElectiveGroup?          @relation(fields: [electiveGroupId], references: [electiveGroupId])
+  electiveGroupId       String?
+  staff                 StaffDetails[]
+  batches               BatchSubject[]
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  ElectiveSubjectChoice ElectiveSubjectChoice[]
+}
 
-  model StaffDetails {
-    id                 String    @id
-    email              String
-    username           String
-    name               String
-    isBatchCoordinator Boolean   @default(false)
-    batchId            String?
-    dateOfBirth        DateTime?
-    gender             String?
-    subjects           Subject[]
-    contactNumber      String?
-    achievements       Json?
-    address            String?
-    city               String?
-    state              String?
-    pinCode            Int?
-    isActive           Boolean   @default(true)
-    isProfileCompleted Boolean   @default(false)
-    createdAt          DateTime  @default(now())
-    updatedAt          DateTime  @updatedAt
-    user               User      @relation(fields: [id], references: [id])
-    batch              Batch?    @relation(fields: [batchId], references: [batchId])
-  }
+model Course {
+  courseId       String           @id @default(uuid())
+  courseName     String           @unique
+  subjects       Subject[]
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  batches        Batch[]
+  StudentDetails StudentDetails[]
+  ElectiveGroup  ElectiveGroup[]
+}
 
-  model Subject {
-    subjectId             String                  @id @default(uuid())
-    subjectName           String
-    subjectCode           String
-    semester              Int
-    courseId              String
-    isElective            Boolean                 @default(false)
-    course                Course                  @relation(fields: [courseId], references: [courseId])
-    electiveGroup         ElectiveGroup?          @relation(fields: [electiveGroupId], references: [electiveGroupId])
-    electiveGroupId       String?
-    staff                 StaffDetails[]
-    batches               BatchSubject[]
-    isActive              Boolean                 @default(true)
-    createdAt             DateTime                @default(now())
-    updatedAt             DateTime                @updatedAt
-    ElectiveSubjectChoice ElectiveSubjectChoice[]
-  }
+model Batch {
+  batchId         String           @id @default(uuid())
+  batchName       String           @unique
+  courseId        String
+  batchDuration   Int
+  currentSemester Int
+  students        StudentDetails[]
+  staffMembers    StaffDetails[]
+  subjects        BatchSubject[]
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  course          Course           @relation(fields: [courseId], references: [courseId])
+  timetable       Bytes?
+}
 
-  model Course {
-    courseId       String           @id @default(uuid())
-    courseName     String           @unique
-    subjects       Subject[]
-    isActive       Boolean          @default(true)
-    createdAt      DateTime         @default(now())
-    updatedAt      DateTime         @updatedAt
-    batches        Batch[]
-    StudentDetails StudentDetails[]
-    ElectiveGroup  ElectiveGroup[]
-  }
+model BatchSubject {
+  batchId   String
+  subjectId String
+  semester  Int
+  batch     Batch   @relation(fields: [batchId], references: [batchId])
+  subject   Subject @relation(fields: [subjectId], references: [subjectId])
 
-  model Batch {
-    batchId         String           @id @default(uuid())
-    batchName       String           @unique
-    courseId        String
-    batchDuration   Int
-    currentSemester Int
-    students        StudentDetails[]
-    staffMembers    StaffDetails[]
-    subjects        BatchSubject[]
-    isActive        Boolean          @default(true)
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @updatedAt
-    course          Course           @relation(fields: [courseId], references: [courseId])
-    timetable       Bytes?
-  }
+  @@id([batchId, subjectId])
+}
 
-  model BatchSubject {
-    batchId   String
-    subjectId String
-    semester  Int
-    batch     Batch   @relation(fields: [batchId], references: [batchId])
-    subject   Subject @relation(fields: [subjectId], references: [subjectId])
+model ElectiveGroup {
+  electiveGroupId       String                  @id @default(uuid())
+  groupName             String
+  courseId              String
+  semester              Int
+  isActive              Boolean                 @default(true)
+  subjects              Subject[]
+  course                Course                  @relation(fields: [courseId], references: [courseId])
+  ElectiveSubjectChoice ElectiveSubjectChoice[]
+}
 
-    @@id([batchId, subjectId])
-  }
+model ElectiveSubjectChoice {
+  id              String         @id @default(uuid())
+  studentId       String
+  electiveGroupId String
+  subjectId       String
+  student         StudentDetails @relation(fields: [studentId], references: [id])
+  subject         Subject        @relation(fields: [subjectId], references: [subjectId])
+  electiveGroup   ElectiveGroup  @relation(fields: [electiveGroupId], references: [electiveGroupId])
+}
 
-  model ElectiveGroup {
-    electiveGroupId       String                  @id @default(uuid())
-    groupName             String
-    courseId              String
-    semester              Int
-    isActive              Boolean                 @default(true)
-    subjects              Subject[]
-    course                Course                  @relation(fields: [courseId], references: [courseId])
-    ElectiveSubjectChoice ElectiveSubjectChoice[]
-  }
-
-  model ElectiveSubjectChoice {
-    id              String         @id @default(uuid())
-    studentId       String
-    electiveGroupId String
-    subjectId       String
-    student         StudentDetails @relation(fields: [studentId], references: [id])
-    subject         Subject        @relation(fields: [subjectId], references: [subjectId])
-    electiveGroup   ElectiveGroup  @relation(fields: [electiveGroupId], references: [electiveGroupId])
-  }
-
-  enum Role {
-    Admin
-    Staff
-    PO
-    Student
-  }
+enum Role {
+  Admin
+  Staff
+  PO
+  Student
+}

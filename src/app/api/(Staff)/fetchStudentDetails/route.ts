@@ -1,39 +1,31 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
 import { verifyToken } from "@/utils/auth";
 
 export async function POST(request: NextRequest) {
   console.log("API route hit: /api/fetchStudentDetails");
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    console.log("Token:", token ? "Present" : "Not present");
-    let id = null, role = null;
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.split(" ")[1] || "";
+    const decodedUser = await verifyToken(token);
+    const userId = decodedUser?.id;
+    const userRole = decodedUser?.role;
 
-    if (token) {
-      const decodedToken = verifyToken();
-      if (decodedToken && typeof decodedToken === "object") {
-        id = decodedToken.id;
-        role = decodedToken.role;
-        console.log("Decoded token - ID:", id, "Role:", role);
-      }
+    if (userRole !== "Staff") {
+      return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
     }
 
-    if (!id || role !== "Staff") {
-      console.log("Unauthorized access attempt");
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    // Step 1: Fetch the batch ID of the staff member
     const staffDetails = await prisma.staffDetails.findUnique({
-      where: { id },
+      where: { id: userId },
       select: { batchId: true },
     });
 
     if (!staffDetails || !staffDetails.batchId) {
       console.log("No batch ID found for staff member");
-      return NextResponse.json({ message: "No batch assigned" }, { status: 404 });
+      return NextResponse.json(
+        { message: "No batch assigned" },
+        { status: 404 }
+      );
     }
 
     const batchId = staffDetails.batchId;
@@ -72,9 +64,11 @@ export async function POST(request: NextRequest) {
 
     console.log("Number of students fetched:", students.length);
     return NextResponse.json({ students }, { status: 200 });
-  } 
-  catch (error) {
+  } catch (error) {
     console.error("Error fetching students:", error);
-    return NextResponse.json({ message: "An unexpected error occurred" }, { status: 500 });
+    return NextResponse.json(
+      { message: "An unexpected error occurred" },
+      { status: 500 }
+    );
   }
 }

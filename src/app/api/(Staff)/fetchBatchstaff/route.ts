@@ -4,15 +4,17 @@ import { verifyToken } from "@/utils/auth";
 
 const prisma = new PrismaClient();
 
-export async function GET(req: Request) {
-  const decodedUser = verifyToken();
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || "";
+  const decodedUser = await verifyToken(token);
   const userRole = decodedUser?.role;
 
   if (userRole !== "Staff") {
     return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
   }
 
-  const { searchParams } = new URL(req.url);
+  const { searchParams } = new URL(request.url);
   const batchId = searchParams.get("batchId");
 
   try {
@@ -37,7 +39,7 @@ export async function GET(req: Request) {
       const formattedBatch = {
         batchId: batch.batchId,
         batchName: batch.batchName,
-        courseName: batch.course.courseName
+        courseName: batch.course.courseName,
       };
 
       return NextResponse.json(formattedBatch, { status: 200 });
@@ -57,7 +59,7 @@ export async function GET(req: Request) {
       const formattedBatches = batches.map((batch) => ({
         batchId: batch.batchId,
         batchName: batch.batchName,
-        courseName: batch.course.courseName
+        courseName: batch.course.courseName,
       }));
 
       return NextResponse.json(formattedBatches, { status: 200 });

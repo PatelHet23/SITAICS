@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, props: { params: { id: string } }) {
   const params = await props.params;
   const { id } = params;
 
@@ -39,7 +39,6 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
     let roleDetails: any = {};
 
     if (user.role === Role.Student && user.studentDetails) {
-       
       const {
         id: _id,
         course: _course,
@@ -59,11 +58,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
       };
     } else if (user.role === Role.Staff && user.staffDetails) {
       // Destructure without the 'user' property since it doesn't exist
-      const {
-        id: _id,
-        batch: _batch,
-        ...staffDetails
-      } = user.staffDetails;
+      const { id: _id, batch: _batch, ...staffDetails } = user.staffDetails;
 
       roleDetails = {
         ...staffDetails,
@@ -95,7 +90,10 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
   }
 }
 
-export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  request: Request,
+  props: { params: Promise<{ id: string }> }
+) {
   const params = await props.params;
   const { id } = params;
 

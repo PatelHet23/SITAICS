@@ -3,28 +3,30 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/utils/auth";
 
 export async function POST(request: NextRequest) {
-  const decodedUser = verifyToken();
-  const userRole = decodedUser?.role;
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || "";
+  const decodedUser = await verifyToken(token);
   const userId = decodedUser?.id;
+  const userRole = decodedUser?.role;
 
   if (userRole !== "Staff") {
     return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
   }
-
   try {
-    // Fetch staff details to get the batchId
     const staffDetails = await prisma.staffDetails.findUnique({
       where: { id: userId },
       select: { batchId: true },
     });
 
     if (!staffDetails || !staffDetails.batchId) {
-      return NextResponse.json({ message: "Batch not found for the staff!" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Batch not found for the staff!" },
+        { status: 404 }
+      );
     }
 
     const batchId = staffDetails.batchId;
 
-    // Fetch the batch to check if the timetable exists
     const existingBatch = await prisma.batch.findUnique({
       where: { batchId },
       select: { timetable: true },
@@ -37,11 +39,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Update the batch to remove the timetable (set it to null)
     await prisma.batch.update({
       where: { batchId },
       data: {
-        timetable: null, // Set the timetable field to null to delete it
+        timetable: null,
       },
     });
 

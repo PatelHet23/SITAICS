@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/utils/auth";
 
-export async function GET(req: Request) {
-  const user = verifyToken();
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || "";
+  const user = await verifyToken(token);
   if (user?.role !== "Admin") {
     return NextResponse.json(
       { message: "Access Denied", success: false },
@@ -11,7 +13,7 @@ export async function GET(req: Request) {
     );
   }
   try {
-    const url = new URL(req.url);
+    const url = new URL(request.url);
     const category = url.searchParams.get("category");
     switch (category) {
       case "admin":

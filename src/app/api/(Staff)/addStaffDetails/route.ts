@@ -3,14 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/utils/auth";
 
 export async function POST(request: NextRequest) {
-  const decodedUser = verifyToken();
-  const userRole = decodedUser?.role;
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || "";
+  const decodedUser = await verifyToken(token);
   const userId = decodedUser?.id;
+  const userRole = decodedUser?.role;
 
   if (userRole !== "Staff") {
     return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
   }
-
   try {
     const reqBody = await request.json();
     const {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
       pinCode,
       contactNumber,
       dateOfBirth,
-      isBatchCoordinator, 
+      isBatchCoordinator,
       batchId,
     } = reqBody;
 

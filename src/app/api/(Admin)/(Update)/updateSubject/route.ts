@@ -2,23 +2,29 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/utils/auth";
 
-export async function PUT(req: Request) {
-  const decodedUser = verifyToken();
+export async function PUT(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || "";
+  const decodedUser = await verifyToken(token);
+  const userRole = decodedUser?.role;
 
-  if (decodedUser?.role !== "Admin") {
+  if (userRole !== "Admin") {
     return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
   }
-
   try {
-    const { subjectId, subjectName, subjectCode, semester, courseName } = await req.json();
+    const { subjectId, subjectName, subjectCode, semester, courseName } =
+      await request.json();
 
     const course = await prisma.course.findUnique({
       where: { courseName },
-      select: { courseId: true }
+      select: { courseId: true },
     });
 
     if (!course) {
-      return NextResponse.json({ message: "Course not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Course not found" },
+        { status: 404 }
+      );
     }
 
     const updatedSubject = await prisma.subject.update({
@@ -27,8 +33,8 @@ export async function PUT(req: Request) {
         subjectName,
         subjectCode,
         semester,
-        courseId: course.courseId
-      }
+        courseId: course.courseId,
+      },
     });
 
     return NextResponse.json(

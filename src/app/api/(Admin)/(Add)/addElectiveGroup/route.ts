@@ -2,16 +2,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/utils/auth";
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const decodedUser = verifyToken();
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.split(" ")[1] || "";
+
+    const decodedUser = await verifyToken(token);
     const userRole = decodedUser?.role;
 
     if (userRole !== "Admin") {
       return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
     }
 
-    const body = await req.json();
+    const body = await request.json();
     const { groupName, courseName, semester } = body;
 
     if (!groupName || !courseName || !semester) {

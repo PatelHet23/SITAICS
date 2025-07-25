@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/utils/auth";
 
-export async function POST(req: Request) {
-  const decodedUser = verifyToken();
+export async function POST(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || "";
+  const decodedUser = await verifyToken(token);
   const userRole = decodedUser?.role;
 
   if (userRole !== "Admin") {
@@ -11,14 +13,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { 
-      subjectName, 
-      subjectCode, 
-      semester, 
+    const {
+      subjectName,
+      subjectCode,
+      semester,
       courseId: providedCourseId,
       isElective,
-      electiveGroupId 
-    } = await req.json();
+      electiveGroupId,
+    } = await request.json();
 
     if (!subjectName || !subjectCode || !semester || !providedCourseId) {
       return NextResponse.json(
@@ -53,10 +55,10 @@ export async function POST(req: Request) {
     }
 
     const existingSubject = await prisma.subject.findFirst({
-      where: { 
+      where: {
         subjectName,
         subjectCode,
-        courseId: course.courseId
+        courseId: course.courseId,
       },
     });
 
@@ -73,8 +75,8 @@ export async function POST(req: Request) {
         where: {
           electiveGroupId,
           courseId: course.courseId,
-          semester: semesterInt
-        }
+          semester: semesterInt,
+        },
       });
 
       if (!electiveGroup) {
@@ -101,7 +103,10 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Error adding subject:", error);
     return NextResponse.json(
-      { message: "An error occurred while adding the subject", error: error.message },
+      {
+        message: "An error occurred while adding the subject",
+        error: error.message,
+      },
       { status: 500 }
     );
   }

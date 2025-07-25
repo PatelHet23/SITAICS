@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { PrismaClient, Role, User, StudentDetails, StaffDetails } from "@prisma/client";
+import {
+  PrismaClient,
+  Role,
+  User,
+  StudentDetails,
+  StaffDetails,
+} from "@prisma/client";
+import { verifyToken } from "@/utils/auth";
 
 const prisma = new PrismaClient();
 
@@ -8,14 +15,24 @@ type UserWithDetails = User & {
   staffDetails: StaffDetails | null;
 };
 
-export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  request: Request,
+  props: { params: Promise<{ id: string }> }
+) {
   const params = await props.params;
   const { id } = params;
 
   try {
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.split(" ")[1] || "";
+    const decodedUser = await verifyToken(token);
+    const userRole = decodedUser?.role;
+
+    if (userRole !== "Admin") {
+      return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
+    }
     const data = await request.json();
 
-    // First, fetch the existing user to determine their role
     const existingUser = await prisma.user.findUnique({
       where: { id },
       include: {
@@ -54,7 +71,9 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
             enrollmentNumber: data.enrollmentNumber,
             courseName: data.courseName,
             batchName: data.batchName,
-            dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+            dateOfBirth: data.dateOfBirth
+              ? new Date(data.dateOfBirth)
+              : undefined,
             gender: data.gender,
             bloodGroup: data.bloodGroup,
             contactNo: data.contactNo,
@@ -75,7 +94,9 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
             username: data.username,
             isBatchCoordinator: data.isBatchCoordinator,
             batchId: data.batchId,
-            dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+            dateOfBirth: data.dateOfBirth
+              ? new Date(data.dateOfBirth)
+              : undefined,
             gender: data.gender,
             contactNumber: data.contactNumber,
             achievements: data.achievements,
@@ -121,10 +142,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
     return NextResponse.json(response);
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 

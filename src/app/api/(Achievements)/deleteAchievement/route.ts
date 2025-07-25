@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/utils/auth";
 
 export async function PATCH(request: NextRequest) {
-  const decodedUser = verifyToken();
-  const userRole = decodedUser?.role;
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || "";
+  const decodedUser = await verifyToken(token);
   const userId = decodedUser?.id;
+  const userRole = decodedUser?.role;
 
-  if (userRole !== "Staff" && userRole !== "Student") {
+  if (userRole !== "Admin") {
     return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
   }
 
@@ -25,11 +27,13 @@ export async function PATCH(request: NextRequest) {
       });
 
       if (!staffDetails) {
-        return NextResponse.json({ message: "Staff not found!" }, { status: 404 });
+        return NextResponse.json(
+          { message: "Staff not found!" },
+          { status: 404 }
+        );
       }
 
       achievements = staffDetails.achievements ? staffDetails.achievements : [];
-
     } else if (userRole === "Student") {
       // Fetch the student details including their achievements
       const studentDetails = await prisma.studentDetails.findUnique({
@@ -38,10 +42,15 @@ export async function PATCH(request: NextRequest) {
       });
 
       if (!studentDetails) {
-        return NextResponse.json({ message: "Student not found!" }, { status: 404 });
+        return NextResponse.json(
+          { message: "Student not found!" },
+          { status: 404 }
+        );
       }
 
-      achievements = studentDetails.achievements ? studentDetails.achievements : [];
+      achievements = studentDetails.achievements
+        ? studentDetails.achievements
+        : [];
     }
 
     // Ensure achievements is an array

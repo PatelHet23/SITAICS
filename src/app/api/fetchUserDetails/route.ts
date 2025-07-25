@@ -5,16 +5,13 @@ import { verifyToken } from "@/utils/auth";
 
 export async function GET(request: NextRequest) {
   try {
-
-    
-
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     let id = null,
       role = null;
 
     if (token) {
-      const decodedToken = verifyToken();
+      const decodedToken = await verifyToken(token);
       if (decodedToken && typeof decodedToken === "object") {
         id = decodedToken.id;
         role = decodedToken.role;
@@ -22,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!id || !role) {
-      return NextResponse.json({ message: "Bad Request" }, { status: 400 });
+      return NextResponse.json({ message: "Bad Request" }, { status: 403 });
     }
 
     let user;

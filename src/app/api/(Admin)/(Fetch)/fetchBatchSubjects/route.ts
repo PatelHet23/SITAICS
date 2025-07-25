@@ -4,16 +4,18 @@ import { verifyToken } from "@/utils/auth";
 
 const prisma = new PrismaClient();
 
-export async function GET(req: Request) {
+export async function GET(request: Request) {
   try {
-    const decodedUser = verifyToken();
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.split(" ")[1] || "";
+    const decodedUser = await verifyToken(token);
     const userRole = decodedUser?.role;
 
     if (userRole !== "Admin") {
       return NextResponse.json({ message: "Access Denied!" }, { status: 403 });
     }
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const batchId = searchParams.get("batchId");
 
     if (!batchId) {

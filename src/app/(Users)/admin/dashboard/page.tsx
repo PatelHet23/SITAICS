@@ -62,7 +62,10 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
-        const response = await fetch(`/api/fetchUserDetails`);
+        const response = await fetch("/api/fetchUserDetails", {
+          method: "GET",
+          credentials: "include",
+        });
         const data = await response.json();
         if (response.status !== 200)
           toast.error(data.message || "Error while fetching user data");
