@@ -9,7 +9,7 @@ interface Achievement {
   category: string;
 }
 
-const Achievement: React.FC = () => {
+const AchievementComponent: React.FC = () => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -20,7 +20,13 @@ const Achievement: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState("All");
   const [activeTab, setActiveTab] = useState<"view" | "add">("view");
 
-  const categories = ["Academic", "Sports", "Extracurricular", "Professional", "Other"];
+  const categories = [
+    "Academic",
+    "Sports",
+    "Extracurricular",
+    "Professional",
+    "Other",
+  ];
 
   useEffect(() => {
     const storedAchievements = localStorage.getItem("achievements");
@@ -28,31 +34,36 @@ const Achievement: React.FC = () => {
       setAchievements(JSON.parse(storedAchievements));
     }
   }, []);
-  const fetchAchievements = async () => {
-    try {
-      const response = await fetch("/api/fetchAchievements", {
-        method: "GET",
-      });
 
-      if (!response.ok) {
-        throw new Error(`Error fetching achievements: ${response.statusText}`);
-      }
+  const filteredAchievements = achievements.filter((a) => {
+    const matchesSearch = a.title
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      filterCategory === "All" || a.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
 
-      const data = await response.json();
-      console.log("Fetched achievements data:", data);
-
-      setAchievements(Array.isArray(data.achievements) ? data.achievements : []);
-    } catch (error) {
-      console.error("Error fetching achievements:", error);
-      setAchievements([]);
+  const handleEdit = (id: number) => {
+    const achievement = achievements.find((a) => a.id === id);
+    if (achievement) {
+      setTitle(achievement.title);
+      setDescription(achievement.description);
+      setDate(achievement.date);
+      setCategory(achievement.category);
+      setEditingId(id);
+      setActiveTab("add");
     }
   };
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId !== null) {
-      setAchievements(
-        achievements.map((ach) =>
-          ach.id === editingId ? { ...ach, title, description, date, category } : ach
+      setAchievements((prev) =>
+        prev.map((ach) =>
+          ach.id === editingId
+            ? { ...ach, title, description, date, category }
+            : ach
         )
       );
       setEditingId(null);
@@ -66,7 +77,9 @@ const Achievement: React.FC = () => {
       };
       setAchievements([...achievements, newAchievement]);
     }
+    resetForm();
   };
+
   const resetForm = () => {
     setTitle("");
     setDescription("");
@@ -74,78 +87,64 @@ const Achievement: React.FC = () => {
     setCategory("");
     setEditingId(null);
   };
-  const handleDelete = async (
-    userId: string,
-    role: string,
-    achievement: Achievement
-  ) => {
+
+  const handleDelete = async (achievement: Achievement) => {
     try {
       const response = await fetch("/api/deleteAchievement", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: achievement.title,
-          description: achievement.description,
-          date: achievement.date,
-          category: achievement.category,
-        }),
+        body: JSON.stringify(achievement),
       });
+
       if (response.ok) {
         const data = await response.json();
-        console.log("Delete Achievement Response:", data);
-        setAchievements((prev) =>
-          prev.filter(
-            (a) =>
-              a.title !== achievement.title ||
-              a.description !== achievement.description ||
-              a.date !== achievement.date ||
-              a.category !== achievement.category
-          )
-        );
+        console.log("Deleted:", data);
+        setAchievements((prev) => prev.filter((a) => a.id !== achievement.id));
       } else {
         throw new Error("Failed to delete achievement");
       }
     } catch (error) {
-      console.error("Error deleting achievement:", error);
+      console.error("Error deleting:", error);
     }
   };
+
   return (
-    <div className="bg-white shadow-md rounded-lg p-6 md:p-8 max-w-10xl mx-auto">
-      <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">
-        Achievements
-      </h2>
-      <div className="flex flex-col md:flex-row mb-4 border-b border-gray-300">
+    <div className="bg-white shadow-md rounded-lg p-6 md:p-8 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6 text-center">Achievements</h2>
+
+      <div className="flex mb-4 border-b">
         <button
-          className={`p-2 flex-1 ${
-            activeTab === "view" ? "bg-black text-white" : "bg-gray-200 text-gray-700"
-          } md:rounded-tl-lg`}
+          className={`flex-1 p-2 ${
+            activeTab === "view" ? "bg-black text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("view")}
         >
-          View Achievements
+          View
         </button>
         <button
-          className={`p-2 flex-1 ${
-            activeTab === "add" ? "bg-black text-white" : "bg-gray-200 text-gray-700"
-          } md:rounded-tr-lg`}
+          className={`flex-1 p-2 ${
+            activeTab === "add" ? "bg-black text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("add")}
         >
-          Add Achievement
+          Add
         </button>
       </div>
+
       {activeTab === "view" && (
         <div>
-          <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search achievements..."
-              className="p-2 border rounded w-full md:w-1/2 lg:w-1/3"
+              placeholder="Search..."
+              className="p-2 border rounded w-full"
             />
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="p-2 border rounded w-full md:w-1/4 lg:w-1/5"
+              className="p-2 border rounded w-full md:w-1/3"
             >
               <option value="All">All Categories</option>
               {categories.map((cat) => (
@@ -155,52 +154,47 @@ const Achievement: React.FC = () => {
               ))}
             </select>
           </div>
-          <div className="space-y-4">
-            {filteredAchievements.map((achievement) => (
-              <div key={achievement.id} className="border p-4 rounded shadow-md">
+
+          {filteredAchievements.length > 0 ? (
+            filteredAchievements.map((achievement) => (
+              <div
+                key={achievement.id}
+                className="border p-4 mb-4 rounded shadow"
+              >
                 <h3 className="text-xl font-semibold">{achievement.title}</h3>
-                <p className="text-gray-600">{achievement.description}</p>
+                <p>{achievement.description}</p>
                 <p className="text-sm text-gray-500">
-                  Date: {achievement.date} | Category: {achievement.category}
+                  {achievement.date} | {achievement.category}
                 </p>
-                <div className="mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                <div className="flex space-x-2 mt-2">
                   <button
                     onClick={() => handleEdit(achievement.id)}
-                    className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 w-full sm:w-auto flex items-center justify-center"
+                    className="bg-yellow-500 text-white px-3 py-1 rounded flex items-center"
                   >
-                    <div>
-                      <h3 className="text-xl font-semibold">
-                        {achievement.title}
-                      </h3>
-                      <p className="text-gray-600">
-                        {achievement.description}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Date: {achievement.date} | Category:{" "}
-                        {achievement.category}
-                      </p>
-                    </div>
-                    <button
-                    onClick={() => handleDelete(userId, userRole, achievement)}
-                    className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 w-full sm:w-auto flex items-center justify-center"
+                    <FaRegEdit className="mr-2" /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(achievement)}
+                    className="bg-red-600 text-white px-3 py-1 rounded flex items-center"
                   >
                     <FaTrashAlt className="mr-2" /> Delete
                   </button>
-                  </div>
-                ))
-            ) : (
-              <p>No achievements found</p>
-            )}
-          </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>No achievements found.</p>
+          )}
         </div>
       )}
+
       {activeTab === "add" && (
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Achievement Title"
+            placeholder="Title"
             className="w-full p-2 border rounded"
             required
           />
@@ -233,13 +227,14 @@ const Achievement: React.FC = () => {
           </select>
           <button
             type="submit"
-            className="w-full bg-black text-white p-2 rounded hover:bg-gray-800"
+            className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
           >
-            {editingId !== null ? "Update Achievement" : "Add Achievement"}
+            {editingId ? "Update Achievement" : "Add Achievement"}
           </button>
         </form>
       )}
     </div>
   );
 };
-export default Achievement;
+
+export default AchievementComponent;
