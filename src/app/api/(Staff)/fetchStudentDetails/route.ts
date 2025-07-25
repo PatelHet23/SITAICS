@@ -6,7 +6,7 @@ import { verifyToken } from "@/utils/auth";
 export async function POST(request: NextRequest) {
   console.log("API route hit: /api/fetchStudentDetails");
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     console.log("Token:", token ? "Present" : "Not present");
     let id = null, role = null;

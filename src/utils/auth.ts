@@ -8,9 +8,9 @@ interface DecodedUser {
   role: string;
 }
 
-export const verifyToken = (): DecodedUser | null => {
+export const verifyToken = async (): Promise<DecodedUser | null> => {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     if (token) {
       const decoded = jwt.verify(

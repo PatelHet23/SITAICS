@@ -8,10 +8,8 @@ type UserWithDetails = User & {
   staffDetails: StaffDetails | null;
 };
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { id } = params;
 
   try {

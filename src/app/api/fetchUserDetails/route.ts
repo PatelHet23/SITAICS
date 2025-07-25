@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     let id = null,
       role = null;

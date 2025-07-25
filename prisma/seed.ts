@@ -70,7 +70,6 @@ async function main() {
     });
     createdBatches.push(batch);
 
-    // Create subjects for each course
     for (const subject of subjects) {
       const createdSubject = await prisma.subject.create({
         data: {
@@ -82,7 +81,6 @@ async function main() {
       });
       createdSubjects.push(createdSubject);
 
-      // Associate subject with batch
       await prisma.batchSubject.create({
         data: {
           batchId: batch.batchId,
