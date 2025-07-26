@@ -35,7 +35,7 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
     pinCode: "",
     contactNumber: "",
     dateOfBirth: "",
-    isBatchCoordinator: false,
+    isBatchCoordinator: null as boolean | null,
     batchId: "",
     subjectCount: 0,
     subjects: [] as string[],
@@ -56,16 +56,18 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
     subjectCount: "",
   });
 
-  const [batches, setBatches] = useState<{
-    batchId: string;
-    batchName: string;
-    courseName: string;
-  }[]>([]);
+  const [batches, setBatches] = useState<
+    {
+      batchId: string;
+      batchName: string;
+      courseName: string;
+    }[]
+  >([]);
 
   useEffect(() => {
     const fetchBatches = async () => {
       try {
-        const response = await fetch("/api/fetchBatchstaff");
+        const response = await fetch("/api/fetchBatchStaff");
         if (!response.ok) {
           throw new Error("Failed to fetch batches");
         }
@@ -82,10 +84,26 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
     }
   }, [staffFormData.isBatchCoordinator]);
 
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) throw new Error("Logout failed");
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Logout failed", err);
+      toast.error("Logout failed. Please try again.");
+    }
+  };
+
   const handleStaffInputChange = (
     e: React.ChangeEvent<HTMLElement & { name?: string }>
   ) => {
-    const { name, value, type } = e.target as HTMLInputElement;
+    const { name, value } = e.target as HTMLInputElement;
 
     setStaffFormData((prevData) => ({
       ...prevData,
@@ -99,10 +117,10 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
   };
 
   const handleBatchCoordinatorChange = (checked: boolean) => {
-    setStaffFormData(prev => ({
+    setStaffFormData((prev) => ({
       ...prev,
       isBatchCoordinator: checked,
-      batchId: checked ? prev.batchId : "", // Clear batchId if unchecked
+      batchId: checked ? prev.batchId : "",
     }));
   };
 
@@ -111,8 +129,7 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
 
     if (/^[0-9]*$/.test(value)) {
       const newCount = value === "" ? 0 : parseInt(value, 10);
-      
-      // Limit the subject count to MAX_SUBJECTS
+
       if (newCount > MAX_SUBJECTS) {
         toast.error(`Maximum ${MAX_SUBJECTS} subjects are allowed.`);
         return;
@@ -121,7 +138,9 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
       setStaffFormData((prevData) => ({
         ...prevData,
         subjectCount: newCount,
-        subjects: Array(newCount).fill("").map((_, i) => prevData.subjects[i] || ""),
+        subjects: Array(newCount)
+          .fill("")
+          .map((_, i) => prevData.subjects[i] || ""),
       }));
       setErrors((prevErrors) => ({
         ...prevErrors,
@@ -188,37 +207,48 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
         stepErrors.dateOfBirth = "Date of Birth is required.";
         stepIsValid = false;
       }
-      if (staffFormData.subjectCount === 0) {
-        stepErrors.subjectCount = "Please select number of subjects";
-        stepIsValid = false;
-      }
-      if (staffFormData.subjectCount > 0 && staffFormData.subjects.some(subject => !subject)) {
-        stepErrors.subjects = "All subject names are required.";
-        stepIsValid = false;
-      }
       if (staffFormData.isBatchCoordinator && !staffFormData.batchId) {
         stepErrors.batchId = "Batch is required for coordinators.";
         stepIsValid = false;
       }
     }
 
+    if (currentStep === 4) {
+      if (staffFormData.subjectCount === 0) {
+        stepErrors.subjectCount = "Please select number of subjects.";
+        stepIsValid = false;
+      }
+      if (
+        staffFormData.subjectCount > 0 &&
+        staffFormData.subjects.some((subject) => !subject.trim())
+      ) {
+        stepErrors.subjects = "All subject names are required.";
+        stepIsValid = false;
+      }
+    }
+
     setErrors(stepErrors);
+
+    if (!stepIsValid) {
+      console.warn("Validation failed with errors:", stepErrors);
+    }
+
     return stepIsValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep()) return;
+
     try {
-      const updatedStaffDetails = await fetch("/api/fetchBatchSubjectsStaff", {
-        method: "GET",
+      const response = await fetch("/api/fetchBatchSubjectsStaff", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(staffFormData),
       });
 
-      if (updatedStaffDetails.ok) {
+      if (response.ok) {
         toast.success("Staff details added successfully.");
         setShowAddStaffDetails(false);
         fetchUserDetails();
@@ -243,6 +273,9 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
 
   return (
     <div className="relative min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="absolute top-4 right-4">
+        <Button onClick={handleLogout}>Logout</Button>
+      </div>
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <h1 className="text-3xl font-bold mb-3 text-center">Staff Details</h1>
         <p className="text-sm text-gray-400 text-center mb-6">
@@ -306,7 +339,9 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
                 onChange={handleStaffInputChange}
                 required
               />
-              {errors.address && <p className="text-red-500">{errors.address}</p>}
+              {errors.address && (
+                <p className="text-red-500">{errors.address}</p>
+              )}
               <Input
                 type="text"
                 name="city"
@@ -334,10 +369,12 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
                 onChange={handleStaffInputChange}
                 required
               />
-              {errors.pinCode && <p className="text-red-500">{errors.pinCode}</p>}
+              {errors.pinCode && (
+                <p className="text-red-500">{errors.pinCode}</p>
+              )}
             </>
           )}
-          
+
           {currentStep === 3 && (
             <>
               <Input
@@ -358,51 +395,116 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
                 value={staffFormData.dateOfBirth}
                 onChange={handleStaffInputChange}
                 required
-              /> 
-              {errors.dateOfBirth && <p className="text-red-500">{errors.dateOfBirth}</p>}
+              />
+              {errors.dateOfBirth && (
+                <p className="text-red-500">{errors.dateOfBirth}</p>
+              )}
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  name="isBatchCoordinator"
-                  checked={staffFormData.isBatchCoordinator}
-                  onChange={handleStaffInputChange}
-                  id="isBatchCoordinator"
-                />
-                <label htmlFor="isBatchCoordinator">
-                  Are you a Batch Coordinator?
+              <div className="mt-4">
+                <Select
+                  value={
+                    staffFormData.isBatchCoordinator === null
+                      ? ""
+                      : staffFormData.isBatchCoordinator
+                      ? "Yes"
+                      : "No"
+                  }
+                  onValueChange={(value) =>
+                    handleBatchCoordinatorChange(value === "Yes")
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Are you a Batch Coordinator?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Yes">Yes</SelectItem>
+                    <SelectItem value="No">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {staffFormData.isBatchCoordinator && (
+                <div className="mt-2">
+                  <Select
+                    name="batchId"
+                    value={staffFormData.batchId}
+                    onValueChange={(value) =>
+                      handleStaffInputChange({
+                        target: { name: "batchId", value },
+                      } as React.ChangeEvent<HTMLSelectElement>)
+                    }
+                    required
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {batches.map((batch) => (
+                        <SelectItem key={batch.batchId} value={batch.batchId}>
+                          {batch.batchName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.batchId && (
+                    <p className="text-red-500">{errors.batchId}</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {currentStep === 4 && (
+            <div className="flex flex-col space-y-2">
+              <div className="mt-4">
+                <label className="block mb-3 font-medium text-sm">
+                  Number of Subjects
                 </label>
+                <Select
+                  name="subjectCount"
+                  value={
+                    staffFormData.subjectCount > 0
+                      ? staffFormData.subjectCount.toString()
+                      : ""
+                  }
+                  onValueChange={(value) =>
+                    handleSubjectCountChange({
+                      target: { value },
+                    } as React.ChangeEvent<HTMLInputElement>)
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Total Subjects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5].map((count) => (
+                      <SelectItem key={count} value={count.toString()}>
+                        {count}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                {staffFormData.isBatchCoordinator && (
-                  <div className="mt-2">
-                    <Select
-                      name="batchId"
-                      value={staffFormData.batchId}
-                      onValueChange={(value) =>
-                        handleStaffInputChange({
-                          target: { name: "batchId", value },
-                        } as React.ChangeEvent<HTMLSelectElement>)
-                      }
-                      required
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select Batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batches.map((batch) => (
-                          <SelectItem key={batch.batchId} value={batch.batchId}>
-                            {batch.batchName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.batchId && (
-                      <p className="text-red-500">{errors.batchId}</p>
-                    )}
-                  </div>
+                {errors.subjectCount && (
+                  <p className="text-red-500">{errors.subjectCount}</p>
                 )}
               </div>
-            </>
+              {Array.from({ length: staffFormData.subjectCount }).map(
+                (_, index) => (
+                  <Input
+                    key={index}
+                    type="text"
+                    name={`subject-${index}`}
+                    placeholder={`Subject ${index + 1}`}
+                    value={staffFormData.subjects[index] || ""}
+                    onChange={(e) => handleSubjectChange(index, e.target.value)}
+                  />
+                )
+              )}
+              {errors.subjects && (
+                <p className="text-red-500">{errors.subjects}</p>
+              )}
+            </div>
           )}
 
           <div className="flex justify-between">
@@ -412,10 +514,10 @@ const AddStaffDetails: React.FC<AddStaffDetailsProps> = ({
               </Button>
             )}
             <Button
-              type="button"
-              onClick={currentStep === 3 ? handleSubmit : nextStep}
+              type={currentStep === 4 ? "submit" : "button"}
+              onClick={currentStep === 4 ? handleSubmit : nextStep}
             >
-              {currentStep === 3 ? "Submit" : "Next"}
+              {currentStep === 4 ? "Submit" : "Next"}
             </Button>
           </div>
         </form>
