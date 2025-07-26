@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import ReCAPTCHA from "react-google-recaptcha";
+import Turnstile from "react-turnstile";
 import { Eye, EyeOff } from "lucide-react";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 
@@ -35,10 +35,10 @@ export default function Login() {
 
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
-    if (!authState.emailOrUsername) {
+    if (!authState.emailOrUsername.trim()) {
       errors.emailOrUsername = "Email or Username is required.";
     }
-    if (!authState.password) {
+    if (!authState.password.trim()) {
       errors.password = "Password is required.";
     }
     if (!captchaToken) {
@@ -63,7 +63,10 @@ export default function Login() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(authState),
+        body: JSON.stringify({
+          ...authState,
+          captchaToken,
+        }),
       });
 
       if (res.ok) {
@@ -208,10 +211,11 @@ export default function Login() {
               </Link>
             </div>
             <div className="mt-4">
-              <ReCAPTCHA
-                sitekey="6Ldx5i8qAAAAAGNuXmx6IP-LjQG7Zhwc9f7VSr3R"
-                onChange={(token) => setCaptchaToken(token)}
-                className="w-full"
+              <Turnstile
+                sitekey="0x4AAAAAABmm43NG30ZV1FO-"
+                onSuccess={(token) => setCaptchaToken(token)}
+                className="w-full rounded-md"
+                theme="light"
               />
             </div>
             {errors.captcha && (

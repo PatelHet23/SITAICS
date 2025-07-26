@@ -2,12 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import axios from "axios";
 
 export async function POST(request: NextRequest) {
   try {
     const reqBody = await request.json();
-    const { emailOrUsername, password } = reqBody;
+    const { emailOrUsername, password, captchaToken } = reqBody;
     const isEmail = emailOrUsername.includes("@");
+    if (!captchaToken) {
+      return NextResponse.json(
+        { error: "Missing CAPTCHA token" },
+        { status: 400 }
+      );
+    }
+    const secret = process.env.TURNSTILE_SECRET_KEY!;
+    const verifyURL =
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+    const { data } = await axios.post(
+      verifyURL,
+      new URLSearchParams({
+        secret,
+        response: captchaToken,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    if (!data.success) {
+      return NextResponse.json(
+        { error: "CAPTCHA verification failed" },
+        { status: 400 }
+      );
+    }
 
     const user = isEmail
       ? await prisma.user.findUnique({ where: { email: emailOrUsername } })

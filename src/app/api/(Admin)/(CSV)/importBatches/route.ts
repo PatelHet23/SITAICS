@@ -72,6 +72,21 @@ export async function POST(request: NextRequest) {
     await prisma.$transaction(async (prisma) => {
       for (const batch of results) {
         try {
+          const rawDuration = batch.duration?.trim();
+          const rawSemester = batch.currentSemester?.trim();
+
+          console.log("Parsed values:", {
+            rawDuration,
+            rawSemester,
+          });
+
+          const batchDuration = Number(rawDuration);
+          const currentSemester = Number(rawSemester);
+
+          const existingBatch = await prisma.batch.findFirst({
+            where: { batchName: batch.batchName },
+          });
+
           const inactiveBatch = await prisma.batch.findFirst({
             where: {
               batchName: batch.batchName,
@@ -87,16 +102,22 @@ export async function POST(request: NextRequest) {
               currentSemester: batch.currentSemester,
               reason: "Inactive batch found",
             });
-            continue;
-          }
-
-          const existingBatch = await prisma.batch.findFirst({
-            where: {
+          } else if (
+            isNaN(batchDuration) ||
+            isNaN(currentSemester) ||
+            batchDuration < 1 ||
+            batchDuration > 4 ||
+            currentSemester < 1 ||
+            currentSemester > 8
+          ) {
+            failedBatches.push({
               batchName: batch.batchName,
-            },
-          });
-
-          if (existingBatch) {
+              courseName: batch.courseName,
+              duration: batch.duration,
+              currentSemester: batch.currentSemester,
+              reason: "Invalid duration or semester value",
+            });
+          } else if (existingBatch) {
             duplicateBatches.push({
               batchName: batch.batchName,
               courseName: batch.courseName,
@@ -104,31 +125,31 @@ export async function POST(request: NextRequest) {
               currentSemester: batch.currentSemester,
               reason: "Batch already exists",
             });
-            continue;
-          }
+          } else {
+            const courseId = await prisma.course.findUnique({
+              where: {
+                courseName: batch.courseName,
+              },
+              select: {
+                courseId: true,
+              },
+            });
 
-          const courseId = await prisma.course.findUnique({
-            where: {
-              courseName: batch.courseName,
-            },
-            select: {
-              courseId: true,
-            },
-          });
+            if (!courseId?.courseId) {
+              throw new Error("Course does not exist");
+            }
 
-          if (courseId?.courseId) {
             await prisma.batch.create({
               data: {
                 batchName: batch.batchName,
                 courseId: courseId.courseId,
-                batchDuration: parseInt(batch.duration, 5),
-                currentSemester: parseInt(batch.currentSemester, 9),
+                batchDuration,
+                currentSemester,
               },
             });
-          } else {
-            throw new Error("courseId is required and must be defined.");
+
+            successRate++;
           }
-          successRate++;
         } catch (error: any) {
           failedBatches.push({
             batchName: batch.batchName,
